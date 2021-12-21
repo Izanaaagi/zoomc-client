@@ -1,8 +1,23 @@
 <template>
-  <div class='d-flex justify-center'>
+  <div class='d-flex flex-column justify-center align-center'>
     <v-card outlined max-width='450px' class='mt-16 self'>
       <v-row md='6' class='mx-auto d-flex justify-center' justify='center'>
         <v-col class='pa-8' algn>
+          <v-alert
+            v-if='errors.length > 0'
+            color='red'
+            dismissible
+            elevation='8'
+            outlined
+            text>
+            <v-list-item>
+              <v-list-item-content v-for='error in errors' v-bind:key='error.text'>
+                <v-list-item-title>
+                  {{ error.text }}
+                </v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </v-alert>
           <p class='text-h4 flex-column text-center'>
             Enter your name
           </p>
@@ -36,9 +51,12 @@ import Component from 'vue-class-component';
 import { namespace } from 'vuex-class';
 import { Axios } from 'axios';
 import SocketService from '@/services/socket-service';
+import { Error } from '@/interfaces/error';
 
 const room = namespace('Room');
 const user = namespace('User');
+const errors = namespace('Errors');
+
 @Component({ name: 'EnterName' })
 export default class EnterName extends Vue {
   //Data
@@ -57,12 +75,18 @@ export default class EnterName extends Vue {
   @user.State
   username!: string;
 
+  @errors.State
+  errors!: Array<Error>;
+
   //Methods
   @room.Action
   createRoom!: () => Promise<Axios | void>;
 
   @user.Mutation
   setName!: (name: string) => void;
+
+  @errors.Mutation
+  clearErrors!: () => void;
 
   changeName(e: Event): void {
     const el = e.target as HTMLInputElement;
@@ -97,20 +121,11 @@ export default class EnterName extends Vue {
   }
 
   //Hooks
-  beforeRouteEnter(to, from, next) {
-    console.log('enter');
-    if (to.query.redirectFrom) {
-      next(vm => {
-        vm.alert = 'Sorry, you have to login first!';
-      });
-    } else {
-      next();
-    }
+  beforeDestroy(): void {
+    this.clearErrors();
   }
-
 }
 </script>
 
 <style scoped>
-
 </style>

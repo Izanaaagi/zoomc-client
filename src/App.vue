@@ -8,8 +8,10 @@ import Component from 'vue-class-component';
 import { namespace } from 'vuex-class';
 import SocketService from '@/services/socket-service';
 import { EventListen } from '@/enums/event-listen';
+import { Error } from '@/interfaces/error';
 
 const user = namespace('User');
+const errors = namespace('Errors');
 
 @Component({ name: 'App' })
 export default class App extends Vue {
@@ -19,6 +21,9 @@ export default class App extends Vue {
   @user.Mutation
   setSocketId!: (id: string) => void;
 
+  @errors.Mutation
+  addError!: (errors: Error) => void;
+
   //Hooks
   created(): void {
     this.socket.connect();
@@ -26,8 +31,9 @@ export default class App extends Vue {
       this.setSocketId(this.socket.socket.id);
     });
 
-    this.socket.socket.on(EventListen.ERROR, (error: string) => {
-      this.$router.replace({ name: 'EnterName' });
+    this.socket.socket.on(EventListen.ERROR, (error: Error) => {
+      this.addError(error);
+      this.$router.push({ name: 'EnterName' });
     });
   }
 
