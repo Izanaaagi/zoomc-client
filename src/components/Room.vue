@@ -1,90 +1,42 @@
 <template>
-  <v-app :class='{"chatIncluded": $vuetify.breakpoint.lgAndUp}'>
-    <v-navigation-drawer
-      absolutes
-      :value='isShowParticipantsDrawer'
-      v-click-outside='{include: participantsDrawerInclude, handler: closeParticipantsDrawer}'
-    >
-      <v-list-item>
-        <v-list-item-content>
-          <v-list-item-title class='text-h6'>
-            Participants
-          </v-list-item-title>
-        </v-list-item-content>
-      </v-list-item>
-      <v-divider></v-divider>
-      <v-list-item
-        v-for='user in participants'
-        :key='user.id'
+  <v-app
+    :class='{"chatIncluded": $vuetify.breakpoint.lgAndUp}'>
+    <div v-if='mediaStream.active'>
+      <v-navigation-drawer
+        absolute
+        :value='isShowParticipantsDrawer'
+        v-click-outside='{include: participantsDrawerInclude, handler: closeParticipantsDrawer}'
       >
-        <v-list-item-icon>
-          <v-icon>mdi-account</v-icon>
-        </v-list-item-icon>
-        <v-list-item-content>
-          <v-list-item-title>{{ user.username }}</v-list-item-title>
-        </v-list-item-content>
-      </v-list-item>
-    </v-navigation-drawer>
-    <v-navigation-drawer
-      right
-      app
-      :value='isShowChatDrawer'
-      :width="$vuetify.breakpoint.mdAndUp ? '350px' : '250px'"
-      v-click-outside='{include: chatDrawerInclude, handler: closeChatDrawer}'
+        <participants-drawer></participants-drawer>
+      </v-navigation-drawer>
+      <v-navigation-drawer
+        right
+        app
+        :value='isShowChatDrawer'
+        :width="$vuetify.breakpoint.mdAndUp ? '350px' : '250px'"
+        v-click-outside='{include: chatDrawerInclude, handler: closeChatDrawer}'
+      >
+        <chat />
+      </v-navigation-drawer>
+      <v-main>
+        <cameras-dashboard key='childKey'></cameras-dashboard>
+      </v-main>
+      <v-footer v-if='mediaStream.active' app>
+        <room-toolbar></room-toolbar>
+      </v-footer>
+    </div>
+    <v-container
+      v-else
+      style='height: 100%'
+      class='d-flex justify-center align-center'
     >
-      <Chat />
-    </v-navigation-drawer>
-    <v-main>
-      <div class='d-flex align-center justify-center flex-wrap' style='height: 100vh; padding-bottom: 5%'>
-        <video
-          v-for='(webcam, index) in usersList' v-bind:key='`webcam${webcam}`'
-          autoplay :srcObject.prop='stream'
-          :height='webcamHeight'
-          :width="index === usersList.length - 1 && webcamRows % 2 !== 0? '100%' : '50%'" />
-      </div>
-    </v-main>
-    <v-footer app>
-      <v-col cols='2' class=''>
-        <v-row>
-          <v-col cols='6' class='d-flex justify-center'>
-            <v-btn @click='toggleVoice' icon>
-              <v-icon v-if='isVoiceOn'>mdi-microphone</v-icon>
-              <v-icon v-else color='red'>mdi-microphone-off</v-icon>
-            </v-btn>
-          </v-col>
-          <v-col cols='6' class='d-flex justify-center'>
-            <v-btn @click='toggleCamera' icon>
-              <v-icon v-if='isCameraOn'>mdi-video</v-icon>
-              <v-icon v-else color='red'>mdi-video-off</v-icon>
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-col>
-      <v-col cols='9' class=''>
-        <v-row justify='center'>
-          <v-col cols='4' md='1' class='d-flex justify-end'>
-            <v-btn icon @click='toggleParticipantsDrawer' class='included'>
-              <v-icon>mdi-account-group</v-icon>
-            </v-btn>
-          </v-col>
-          <v-col cols='4' md='1' class='d-flex justify-center'>
-            <v-btn icon @click='startVideo'>
-              <v-icon>mdi-monitor-screenshot</v-icon>
-            </v-btn>
-          </v-col>
-          <v-col cols='4' md='1' class='d-flex justify-start'>
-            <v-btn icon @click='toggleChatDrawer' class='chatIncluded'>
-              <v-icon>mdi-chat</v-icon>
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-col>
-      <v-col cols='1' class='d-flex justify-end'>
-        <v-btn icon @click='leaveRoom'>
-          <v-icon color='red'>mdi-phone-hangup</v-icon>
-        </v-btn>
-      </v-col>
-    </v-footer>
+      <v-progress-circular
+        size='150'
+        width='5'
+        indeterminate
+        color='primary'
+      ></v-progress-circular>
+    </v-container>
   </v-app>
 </template>
 
@@ -92,26 +44,32 @@
 import Vue from 'vue';
 import Component from 'vue-class-component';
 import { namespace } from 'vuex-class';
-import SocketService from '@/services/socket-service';
 import { RoomParticipant } from '@/interfaces/room-participant';
 import Chat from '@/components/Chat.vue';
-import { EventListen } from '@/enums/event-listen';
 import { EventEmit } from '@/enums/event-emit';
+import ParticipantsDrawer from '@/components/ParticipantsDrawer.vue';
+import { Socket } from 'vue-socket.io-extended';
+import RoomToolbar from '@/components/RoomToolbar.vue';
+import CamerasDashboard from '@/components/CamerasDashboard.vue';
+import Peer from 'peerjs';
+import * as freeice from 'freeice';
+import userConnectedSound from '@/assets/sounds/user-connected.mp3';
+import userDisconnectedSound from '@/assets/sounds/user-disconnected.mp3';
 
 const room = namespace('Room');
+const user = namespace('User');
 
-@Component({ name: 'Room', components: { Chat } })
+@Component({ name: 'Room', components: { Chat, ParticipantsDrawer, RoomToolbar, CamerasDashboard } })
 export default class Room extends Vue {
-  //Data
-  socket = SocketService.socket;
-  roomId = this.$route.params.id;
 
-  usersList: string[] =
-    [
-      'Albert', 'Jhon', 'Amur', 'Andre',
-    ];
+  //Data
+  userConnectedSound: HTMLAudioElement = new Audio(userConnectedSound);
+  userDisconnectedSound: HTMLAudioElement = new Audio(userDisconnectedSound);
 
   //Computed
+  @room.State
+  roomId!: string;
+
   @room.State
   isVoiceOn!: boolean;
 
@@ -122,26 +80,27 @@ export default class Room extends Vue {
   isShowChatDrawer!: boolean;
 
   @room.State
+  participants!: Array<RoomParticipant>;
+
+  @room.State
   isShowParticipantsDrawer!: boolean;
 
   @room.State
-  participants!: Array<RoomParticipant>;
+  mediaStream!: MediaStream;
 
-  get webcamRows(): number {
-    return Math.ceil(this.usersList.length / 2);
-  }
+  @room.State
+  peer!: Peer;
 
-  get webcamHeight(): string {
-    return `${100 / this.webcamRows}%`;
-  }
+  @room.State
+  call!: Peer.MediaConnection;
+
+  @user.State
+  socketId!: string;
+
+  @user.State
+  username!: string;
 
   //Methods
-  @room.Mutation
-  toggleVoice!: () => void;
-
-  @room.Mutation
-  toggleCamera!: () => void;
-
   @room.Mutation
   toggleChatDrawer!: () => void;
 
@@ -150,6 +109,30 @@ export default class Room extends Vue {
 
   @room.Mutation
   setParticipants!: (participants: Array<RoomParticipant>) => void;
+
+  @room.Mutation
+  setRoomId!: (roomId: string) => void;
+
+  @room.Mutation
+  addParticipant!: (addedParticipant: RoomParticipant) => void;
+
+  @room.Mutation
+  removeParticipant!: (id: string) => void;
+
+  @room.Mutation
+  addStreamToParticipant!: (payload: Pick<RoomParticipant, 'mediaStream' | 'peerId'>) => void;
+
+  @room.Mutation
+  setMediaStream!: (mediaStream: MediaStream) => void;
+
+  @room.Mutation
+  setPeer!: (peer: Peer) => void;
+
+  @room.Mutation
+  setCall!: (call: Peer.MediaConnection) => void;
+
+  @room.Mutation
+  resetRoom!: () => void;
 
   participantsDrawerInclude(): (Element | null)[] {
     return [document.querySelector('.included')];
@@ -169,32 +152,81 @@ export default class Room extends Vue {
       this.toggleChatDrawer();
   }
 
-  leaveRoom(): void {
-    this.$router.replace({ name: 'EnterName' });
+  initPeer(): void {
+    this.setPeer(new Peer({ config: { iceServers: freeice() } }));
+
+    this.peer.on('open', (id) => {
+      const me: RoomParticipant = {
+        peerId: this.peer.id,
+        username: this.username,
+        mediaStream: this.mediaStream,
+        isVoiceOn: this.isVoiceOn,
+        isCameraOn: this.isCameraOn,
+      };
+      this.addParticipant(me);
+      this.$socket.client.emit(EventEmit.JOIN_ROOM, {
+        roomId: this.roomId,
+        peerId: id,
+        isVoiceOn: this.isVoiceOn,
+        isCameraOn: this.isCameraOn,
+      });
+
+      this.peer.on('call', (call) => {
+        call.answer(this.mediaStream);
+        call.on('stream', (remoteStream) => {
+          this.addStreamToParticipant({ peerId: call.peer, mediaStream: remoteStream });
+        });
+      });
+    });
   }
 
-  stream: any = 'stream';
 
-  async startVideo(): Promise<void> {
-    this.stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+  @Socket('user-connected')
+  onConnected(participant: RoomParticipant): void {
+    this.setCall(this.peer.call(participant.peerId, this.mediaStream));
+    this.addParticipant(participant);
+    this.userConnectedSound.play();
+    this.$socket.client.emit('answer', {
+      id: participant.socketId,
+      peerId: this.peer.id,
+      isVoiceOn: this.isVoiceOn,
+      isCameraOn: this.isCameraOn,
+    });
+    this.call.on('stream', (remoteStream): void => {
+      this.addStreamToParticipant({ peerId: participant.peerId, mediaStream: remoteStream });
+    });
+  }
+
+  //Sockets
+  @Socket('answer')
+  onAnswer(participant: RoomParticipant): void {
+    this.addParticipant(participant);
+  }
+
+  @Socket('user-disconnected')
+  onDisconnect(id: string): void {
+    this.removeParticipant(id);
+    this.userDisconnectedSound.play();
   }
 
   //Hooks
-  created(): void {
-    this.socket.emit(EventEmit.JOIN_ROOM, { roomId: this.roomId });
+  async created(): Promise<void> {
+    this.setRoomId(this.$route.params.id);
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: this.isVoiceOn, video: this.isCameraOn });
+      this.setMediaStream(mediaStream);
+      this.initPeer();
 
-
-    this.socket.on(EventListen.UPDATE_PARTICIPANTS,
-      (participants: Array<RoomParticipant>) => {
-        this.setParticipants(participants);
-      });
-
+    } catch (e) {
+      console.log(e);
+    }
   }
 
   beforeDestroy(): void {
-    this.socket.emit(EventEmit.LEFT_ROOM, { roomId: this.roomId });
-    this.socket.removeAllListeners();
+    this.$socket.client.emit(EventEmit.LEFT_ROOM, { roomId: this.roomId, peerId: this.peer.id });
+    this.resetRoom();
   }
+
 }
 </script>
 

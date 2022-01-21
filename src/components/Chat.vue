@@ -50,9 +50,10 @@ import Vue from 'vue';
 import Component from 'vue-class-component';
 import { namespace } from 'vuex-class';
 import { Message } from '@/interfaces/message';
-import SocketService from '@/services/socket-service';
 import { EventEmit } from '@/enums/event-emit';
 import { EventListen } from '@/enums/event-listen';
+import { Socket } from 'vue-socket.io-extended';
+import messageSound from '@/assets/sounds/message.mp3';
 
 const chat = namespace('Chat');
 const user = namespace('User');
@@ -60,8 +61,8 @@ const user = namespace('User');
 @Component({ name: 'Chat' })
 export default class Chat extends Vue {
   //Data
-  socket = SocketService.socket;
   roomId = this.$route.params.id;
+  messageSound: HTMLAudioElement = new Audio(messageSound);
 
   //Computed
   @chat.State
@@ -93,20 +94,16 @@ export default class Chat extends Vue {
 
   sendMessage(): void {
     if (this.messageText !== '') {
-      this.socket.emit(EventEmit.SEND_MESSAGE, { roomId: this.roomId, text: this.messageText });
+      this.$socket.client.emit(EventEmit.SEND_MESSAGE, { roomId: this.roomId, text: this.messageText });
       this.setMessage('');
     }
   }
 
-  //Hooks
-  created(): void {
-    this.socket.on(EventListen.RECEIVE_MESSAGE, (message: Message) => {
-      this.addMessage(message);
-    });
-
-    this.socket.on(EventListen.CONNECT, () => {
-      this.setSocketId(this.socket.id);
-    });
+  //Sockets
+  @Socket(EventListen.RECEIVE_MESSAGE)
+  onReceiveMessage(message: Message): void {
+    this.addMessage(message);
+    this.messageSound.play();
   }
 
   beforeDestroy(): void {

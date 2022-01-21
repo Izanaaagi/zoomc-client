@@ -1,4 +1,8 @@
 export interface RoomParticipant {
-    id: string;
-    username: string;
+  peerId: string;
+  username: string;
+  mediaStream?: MediaStream;
+  socketId?: string;
+  isVoiceOn: boolean;
+  isCameraOn: boolean;
 }

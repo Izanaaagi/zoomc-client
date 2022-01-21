@@ -45,8 +45,9 @@ const router: VueRouter = new VueRouter({
   routes,
 });
 
-const isHaveName = !!cookie.get('username');
+
 router.beforeEach((to, from, next) => {
+  const isHaveName = !!cookie.get('username');
   if (to.matched.some(record => record.meta.requireName)) {
     if (!isHaveName) {
       next({

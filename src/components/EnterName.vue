@@ -11,7 +11,7 @@
             outlined
             text>
             <v-list-item>
-              <v-list-item-content v-for='error in errors' v-bind:key='error.text'>
+              <v-list-item-content v-for='(error, index) in errors' v-bind:key='`${error.text}${index}`'>
                 <v-list-item-title>
                   {{ error.text }}
                 </v-list-item-title>
@@ -50,7 +50,6 @@ import Vue from 'vue';
 import Component from 'vue-class-component';
 import { namespace } from 'vuex-class';
 import { Axios } from 'axios';
-import SocketService from '@/services/socket-service';
 import { Error } from '@/interfaces/error';
 
 const room = namespace('Room');
@@ -63,7 +62,6 @@ export default class EnterName extends Vue {
   $refs!: {
     nameField: Vue & { validate: (value) => boolean }
   };
-  socket = SocketService.socket;
   rules = {
     required: (value: string): string | boolean => !!value || 'Required',
   };
@@ -91,8 +89,8 @@ export default class EnterName extends Vue {
   changeName(e: Event): void {
     const el = e.target as HTMLInputElement;
     this.setName(el.value);
-    if (this.socket.io.engine) {
-      this.socket.io.engine.close();
+    if (this.$socket.client.io.engine) {
+      this.$socket.client.io.engine.close();
     }
   }
 
