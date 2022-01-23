@@ -119,6 +119,10 @@ export default class EnterName extends Vue {
   }
 
   //Hooks
+  created(): void {
+    document.title = 'ZoomC | Enter name';
+  }
+
   beforeDestroy(): void {
     this.clearErrors();
   }

@@ -211,6 +211,8 @@ export default class Room extends Vue {
 
   //Hooks
   async created(): Promise<void> {
+    document.title = 'ZoomC | Room';
+
     this.setRoomId(this.$route.params.id);
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: this.isVoiceOn, video: this.isCameraOn });

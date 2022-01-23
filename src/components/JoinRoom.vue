@@ -84,6 +84,7 @@ export default class JoinRoom extends Vue {
 
   //Hooks
   created(): void {
+    document.title = 'ZoomC | Join room';
     this.$socket.client.emit(EventEmit.REQUEST_ROOMS, (availableRooms: Array<string>) => {
       this.setAvailableRooms(availableRooms);
     });

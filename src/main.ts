@@ -6,10 +6,11 @@ import vuetify from './plugins/vuetify';
 import { io } from 'socket.io-client';
 import VueSocketIOExt from 'vue-socket.io-extended';
 import { Socket } from 'socket.io-client';
+import { BASE_URL } from '@/api';
 
 Vue.config.productionTip = false;
 
-const socket: Socket = io('http://localhost:5000', { withCredentials: true });
+const socket: Socket = io(BASE_URL, { withCredentials: true });
 Vue.use(VueSocketIOExt, socket);
 
 new Vue({
