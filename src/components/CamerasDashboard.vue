@@ -84,7 +84,7 @@ export default class CamerasDashboard extends Vue {
   }
 
   get webcamHeight(): string {
-    return this.webcamRows === 1 ? '50%' : `${80 / this.webcamRows}%`;
+    return this.webcamRows === 1 ? '48%' : `${80 / this.webcamRows}%`;
   }
 
   //Sockets
