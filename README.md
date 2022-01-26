@@ -8,7 +8,7 @@ Project similar to zoom where you can join in groups and speaking with voice and
 
 ## Overview
 
-![Project overview](https://s10.gifyu.com/images/simplescreenrecorder-2022-01-26_19.27.50.gif)
+![Project overview](https://github.com/Izanaaagi/readme-static/blob/main/zoomc-overview.gif?raw=true)
 
 ## Features
 
