@@ -8,7 +8,7 @@ Project similar to zoom where you can join in groups and speaking with voice and
 
 ## Overview
 
-![Project overview](https://s10.gifyu.com/images/simplescreenrecorder-2022-01-26_19.27.50.gif)
+<img src="https://s10.gifyu.com/images/simplescreenrecorder-2022-01-26_19.27.50.gif">
 
 ## Features
 
